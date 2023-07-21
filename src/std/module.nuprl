@@ -1,0 +1,725 @@
+// Universe
+exprkind U l {}
+
+def Type = U 0
+
+// Type of integers
+exprkind Int {}
+
+// Type of atoms
+exprkind Atom {}
+
+// Equality type `s = t in T`
+exprkind Eq T s t {}
+
+def Member T t = Eq T t t
+
+def Void = Eq Int 0 1
+
+def Not T = Fn T Void
+
+def Neq T s t = Not (Eq T s t)
+
+exprkind any t {}
+
+// Function type `x: S -> T`
+exprkind Fn S T {}
+
+// Product type `x: S # T`
+exprkind Prod S T {}
+
+// Sum type `x: S | T`
+exprkind Sum S T {}
+
+// Intersection type `x: S & T`
+exprkind Isect S T {}
+
+// Recursive type `Rectype x. S`
+exprkind Rectype S {}
+
+// Axiom
+exprkind ax {}
+
+// Lambda abstraction `x. body`
+exprkind lambda body {}
+
+// Application `func arg`
+exprkind app [func] arg {
+    app (lambda x. $body) $arg => [$arg]$body
+}
+
+// Pair `<s, t>`
+exprkind pair s t {}
+
+// Spread expression `let <x, y> = <s, t> in body`
+exprkind spread [p] body {
+    spread (pair $s $t) (x. y. $body) => [$s, $t]$body
+}
+
+// Left injection
+exprkind inl s {}
+
+// Right injection
+exprkind inr s {}
+
+// Decide expression `case inj of inl(x) => l_case, inr(y) => r_case`
+exprkind decide [inj] l_case r_case {
+    decide (inl $s) (x. $l_case) $r_case => [$s]$l_case
+    decide (inr $s) $l_case (x. $r_case) => [$s]$r_case
+}
+
+// Equality comparison `if lhs = rhs then l_case then r_case`
+exprkind compare_eq [lhs] [rhs] l_case r_case {}
+
+// Less-than comparison `if lhs < rhs then l_case then r_case`
+exprkind compare_lt [lhs] [rhs] l_case r_case {}
+
+// Fixed-point combinator `fix f`
+exprkind fix f {
+    fix $f => app $f (fix $f)
+}
+
+// Call-by-value `let x := arg in body`
+exprkind cbv [arg] body {
+    cbv $arg (x. $body) => [$arg]$body
+}
+
+// Negation `-s`
+exprkind arith_neg [s] {}
+
+// Addition `s + t`
+exprkind arith_add [s] [t] {}
+
+// Multiplication `s * t`
+exprkind arith_mul [s] [t] {}
+
+// Division `s div t`
+exprkind arith_div [s] [t] {}
+
+// Remainder `s rem t`
+exprkind arith_rem [s] [t] {}
+
+inference dependent_functionFormation $x:v, $S {
+    goal {
+        conclusion U $j:n
+    }
+    subgoal {
+        conclusion Member (U $j) $S
+    }
+    subgoal {
+        hypothesis end $end
+        hypothesis $x: $S @ $end
+        conclusion U $j
+        extract $T
+    }
+    extract Fn $S (x. $T)
+}
+
+inference independent_functionFormation {
+    goal {
+        conclusion U $j:n
+    }
+    subgoal {
+        conclusion U $j
+        extract $S
+    }
+    subgoal {
+        conclusion U $j
+        extract $T
+    }
+    extract Fn $S $T
+}
+
+inference independent_functionEquality {
+    goal {
+        conclusion Eq (U $j:n) (Fn $S1 $T1) (Fn $S2 $T2)
+    }
+    subgoal {
+        conclusion Eq (U $j) $S1 $S2
+    }
+    subgoal {
+        conclusion Eq (U $j) $T1 $T2
+    }
+    extract ax
+}
+
+// https://www.nuprl.org/wip/rules/rules/independent_functionElimination.html
+inference independent_functionElimination $i, $y:v {
+    goal {
+        hypothesis $f: Fn $S $T @ $i
+        conclusion $C
+    }
+    subgoal {
+        conclusion $S
+        extract $s
+    }
+    subgoal {
+        hypothesis end $end
+        hypothesis $y: $T @ $end
+        conclusion $C
+        extract $t
+    }
+    extract [app $f $s]$t
+}
+
+// https://www.nuprl.org/wip/rules/rules/dependent_functionElimination.html
+inference dependent_functionElimination $i, $s, $y:v, $z:v {
+    goal {
+        hypothesis $f: Fn $S x. $T @ $i
+        conclusion $C
+    }
+    subgoal {
+        conclusion Member $S $s
+    }
+    subgoal {
+        hypothesis end $end1
+        hypothesis $y: [$s]$T @ $end1
+        hypothesis end $end2
+        hypothesis $z: Eq [$s]$T $y (app $f $s) @ $end2
+        conclusion $C
+        extract $t
+    }
+    extract [app $f $s, ax]$t
+}
+
+inference applyReduce {
+    goal {
+        conclusion Eq $T (app (lambda x. $t) $s) $t2
+    }
+    subgoal {
+        conclusion Eq $T [$s]$t $t2
+    }
+    extract ax
+}
+
+inference dependent_pairEquality $j:n, $x:v {
+    goal {
+        conclusion Eq (Prod $S x. $T) (pair $s1 $t1) (pair $s2 $t2)
+    }
+    subgoal {
+        conclusion Eq $S $s1 $s2
+    }
+    subgoal {
+        conclusion Eq [$s1]$T $t1 $t2
+    }
+    subgoal {
+        hypothesis end $end
+        hypothesis $x: $S @ $end
+        conclusion Member (U $j) [$x]$T
+    }
+    extract ax
+}
+
+inference dependent_pairFormation $j:n, $s, $x:v {
+    goal {
+        conclusion Prod $S x. $T
+    }
+    subgoal {
+        conclusion Member $S $s
+    }
+    subgoal {
+        conclusion [$s]$T
+        extract $t
+    }
+    subgoal {
+        hypothesis end $end
+        hypothesis $x: $S @ $end
+        conclusion Member (U $j) [$x]$T
+    }
+    extract pair $s $t
+}
+
+inference independent_pairEquality {
+    goal {
+        conclusion Eq (Prod $S $T) (pair $s1 $t1) (pair $s2 $t2)
+    }
+    subgoal {
+        conclusion Eq $S $s1 $s2
+    }
+    subgoal {
+        conclusion Eq $T $t1 $t2
+    }
+    extract ax
+}
+
+inference independent_pairFormation {
+    goal {
+        conclusion Prod $S $T
+    }
+    subgoal {
+        conclusion $S
+        extract $s
+    }
+    subgoal {
+        conclusion $T
+        extract $t
+    }
+    extract pair $s $t
+}
+
+inference equalityFormation $T {
+    goal {
+        conclusion U $j:n
+    }
+    subgoal {
+        conclusion Member (U $j) $T
+    }
+    subgoal {
+        conclusion $T
+        extract $s
+    }
+    subgoal {
+        conclusion $T
+        extract $t
+    }
+    extract Eq $T $s $t
+}
+
+inference equalityEquality {
+    goal {
+        conclusion Eq (U $j:n) (Eq $T1 $s1 $t1) (Eq $T2 $s2 $t2)
+    }
+    subgoal {
+        conclusion Eq (U $j) $T1 $T2
+    }
+    subgoal {
+        conclusion Eq $T1 $s1 $s2
+    }
+    subgoal {
+        conclusion Eq $T1 $t1 $t2
+    }
+    extract ax
+}
+
+inference axiomEquality {
+    goal {
+        conclusion Member (Eq $T $s $t) ax
+    }
+    subgoal {
+        conclusion Eq $T $s $t
+    }
+    extract ax
+}
+
+inference hypothesisEquality $i {
+    goal {
+        hypothesis $x: $T @ $i
+        conclusion Member $T $x
+    }
+    extract ax
+}
+
+inference substitution $j:n, Eq $T $s $t, x. $C, $x:v {
+    goal {
+        conclusion [$s]$C
+    }
+    subgoal {
+        conclusion Eq $T $s $t
+    }
+    subgoal {
+        conclusion [$t]$C
+        extract $u
+    }
+    subgoal {
+        hypothesis end $end
+        hypothesis $x: $T @ $end
+        conclusion Member (U $j) [$x]$C
+    }
+    extract $u
+}
+
+inference voidFormation {
+    goal {
+        conclusion U $j:n
+    }
+    extract Void
+}
+
+inference voidEquality {
+    goal {
+        conclusion Eq (U $j:n) Void Void
+    }
+    extract ax
+}
+
+inference anyEquality {
+    goal {
+        conclusion Eq $T (any $s) (any $t)
+    }
+    subgoal {
+        conclusion Eq Void $s $t
+    }
+    extract ax
+}
+
+inference voidElimintation $i {
+    goal {
+        hypothesis $z: Void @ $i
+        conclusion $C
+    }
+    extract any $z
+}
+
+inference atomFormation {
+    goal {
+        conclusion U $j:n
+    }
+    extract Atom
+}
+
+inference atomEquality {
+    goal {
+        conclusion Eq (U $j:n) Atom Atom
+    }
+    extract ax
+}
+
+inference intFormation {
+    goal {
+        conclusion U $j:n
+    }
+    extract Int
+}
+
+inference intEquality {
+    goal {
+        conclusion Eq (U $j:n) Int Int
+    }
+    extract ax
+}
+
+inference natural_numberEquality {
+    goal {
+        conclusion Eq Int $n:n $n:n
+    }
+    extract ax
+}
+
+inference natural_numberFormation $n:n {
+    goal {
+        conclusion Int
+    }
+    extract $n
+}
+
+inference minusEquality {
+    goal {
+        conclusion Eq Int (arith_neg $s1) (arith_neg $s2)
+    }
+    subgoal {
+        conclusion Eq Int $s1 $s2
+    }
+    extract ax
+}
+
+inference addEquality {
+    goal {
+        conclusion Eq Int (arith_add $s1 $t1) (arith_add $s2 $t2)
+    }
+    subgoal {
+        conclusion Eq Int $s1 $s2
+    }
+    subgoal {
+        conclusion Eq Int $t1 $t2
+    }
+    extract ax
+}
+
+inference addFormation {
+    goal {
+        conclusion Int
+    }
+    subgoal {
+        conclusion Int
+        extract $s
+    }
+    subgoal {
+        conclusion Int
+        extract $t
+    }
+    extract arith_add $s $t
+}
+
+inference multiplyEquality {
+    goal {
+        conclusion Eq Int (arith_mul $s1 $t1) (arith_mul $s2 $t2)
+    }
+    subgoal {
+        conclusion Eq Int $s1 $s2
+    }
+    subgoal {
+        conclusion Eq Int $t1 $t2
+    }
+    extract ax
+}
+
+inference multiplyFormation {
+    goal {
+        conclusion Int
+    }
+    subgoal {
+        conclusion Int
+        extract $s
+    }
+    subgoal {
+        conclusion Int
+        extract $t
+    }
+    extract arith_mul $s $t
+}
+
+inference divideEquality {
+    goal {
+        conclusion Eq Int (arith_div $s1 $t1) (arith_div $s2 $t2)
+    }
+    subgoal {
+        conclusion Eq Int $s1 $s2
+    }
+    subgoal {
+        conclusion Eq Int $t1 $t2
+    }
+    subgoal {
+        conclusion Neq Int $t1 0
+    }
+    extract ax
+}
+
+inference divideFormation {
+    goal {
+        conclusion Int
+    }
+    subgoal {
+        conclusion Int
+        extract $s
+    }
+    subgoal {
+        conclusion Int
+        extract $t
+    }
+    extract arith_div $s $t
+}
+
+inference remainderEquality {
+    goal {
+        conclusion Eq Int (arith_rem $s1 $t1) (arith_rem $s2 $t2)
+    }
+    subgoal {
+        conclusion Eq Int $s1 $s2
+    }
+    subgoal {
+        conclusion Eq Int $t1 $t2
+    }
+    subgoal {
+        conclusion Neq Int $t1 0
+    }
+    extract ax
+}
+
+inference remainderFormation {
+    goal {
+        conclusion Int
+    }
+    subgoal {
+        conclusion Int
+        extract $s
+    }
+    subgoal {
+        conclusion Int
+        extract $t
+    }
+    extract arith_rem $s $t
+}
+
+// https://www.nuprl.org/wip/rules/rules/addCommutative.html
+inference addCommutative {
+    goal {
+        conclusion Eq Int (arith_add $m $n) (arith_add $n $m)
+    }
+    subgoal {
+        conclusion Member Int $m
+    }
+    subgoal {
+        conclusion Member Int $n
+    }
+    extract ax
+}
+
+// https://www.nuprl.org/wip/rules/rules/addAssociative.html
+inference addAssociative {
+    goal {
+        conclusion Eq Int (arith_add (arith_add $m $n) $k) (arith_add $m (arith_add $n $k))
+    }
+    subgoal {
+        conclusion Member Int $m
+    }
+    subgoal {
+        conclusion Member Int $n
+    }
+    subgoal {
+        conclusion Member Int $k
+    }
+    extract ax
+}
+
+// https://www.nuprl.org/wip/rules/rules/addInverse.html
+inference addInverse {
+    goal {
+        conclusion Eq Int (arith_add $n (arith_neg $n)) 0
+    }
+    subgoal {
+        conclusion Member Int $n
+    }
+    extract ax
+}
+
+// https://www.nuprl.org/wip/rules/rules/addZero.html
+inference addZero {
+    goal {
+        conclusion Eq Int (arith_add 0 $n) $n
+    }
+    subgoal {
+        conclusion Member Int $n
+    }
+    extract ax
+}
+
+inference isectFormation $x:v, $S {
+    goal {
+        conclusion U $j:n
+    }
+    subgoal {
+        conclusion Member (U $j) $S
+    }
+    subgoal {
+        hypothesis end $end
+        hypothesis $x: $S @ $end
+        conclusion U $j
+        extract $T
+    }
+    extract Isect $S (x. $T)
+}
+
+inference isectEquality $x:v {
+    goal {
+        conclusion Eq (U $j:n) (Isect $S1 x. $T1) (Isect $S2 x. $T2)
+    }
+    subgoal {
+        conclusion Eq (U $j) $S1 $S2
+    }
+    subgoal {
+        hypothesis end $end
+        hypothesis $x: $S1 @ $end
+        conclusion Eq (U $j) [$x]$T1 [$x]$T2
+    }
+    extract ax
+}
+
+inference isect_memberEquality $j:n, $x:v {
+    goal {
+        conclusion Eq (Isect $S x. $T) $t1 $t2
+    }
+    subgoal {
+        hypothesis end $end
+        hypothesis $x: $S @ $end
+        conclusion Eq [$x]$T $t1 $t2
+    }
+    subgoal {
+        conclusion Member (U $j) $S
+    }
+    extract ax
+}
+
+inference isect_member_caseEquality Isect $S x. $T, $t {
+    goal {
+        conclusion Eq [$t]$T $f1 $f2
+    }
+    subgoal {
+        conclusion Eq (Isect $S x. $T) $f1 $f2
+    }
+    subgoal {
+        conclusion Member $S $t
+    }
+    extract ax
+}
+
+// https://www.nuprl.org/wip/rules/rules/isectElimination.html
+inference isectElimination $i, $s, $y:v, $z:v {
+    goal {
+        hypothesis $f: Isect $S x. $T @ $i
+        conclusion $C
+    }
+    subgoal {
+        conclusion Member $S $s
+    }
+    subgoal {
+        hypothesis end $end1
+        hypothesis $y: [$s]$T @ $end1
+        hypothesis end $end2
+        hypothesis $z: Eq [$s]$T $y $f @ $end2
+        conclusion $C
+        extract $t
+    }
+    extract [$f, ax]$t
+}
+
+inference hypothesis $i {
+    goal {
+        hypothesis $x: $T @ $i
+        conclusion $T
+    }
+    extract $x
+}
+
+inference thin $i {
+    goal {
+        conclusion $C
+    }
+    subgoal {
+        hypothesis remove @ $i
+        conclusion $C
+        extract $t
+    }
+    extract $t
+}
+
+inference cut $i, $T, $x:v {
+    goal {
+        conclusion $C
+    }
+    subgoal {
+        conclusion $T
+        extract $s
+    }
+    subgoal {
+        hypothesis $x: $T @ $i
+        conclusion $C
+        extract $t
+    }
+    extract app (lambda x. $t) $s
+}
+
+inference introduction $t {
+    goal {
+        conclusion $T
+    }
+    subgoal {
+        conclusion Member $T $t
+    }
+    extract $t
+}
+
+// Include references to the hard-coded inference rules
+!intrinsic functionEquality
+!intrinsic lambdaEquality
+!intrinsic lambdaFormation
+!intrinsic applyEquality
+!intrinsic universeFormation
+!intrinsic universeEquality
+!intrinsic cumulativity
+!intrinsic isect_memberFormation
+!intrinsic direct_computation
+!intrinsic reverse_direct_computation
+!intrinsic direct_computation_hypothesis
+!intrinsic reverse_direct_computation_hypothesis
+!intrinsic lemma
+!intrinsic extract

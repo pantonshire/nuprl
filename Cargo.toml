@@ -1,0 +1,18 @@
+[package]
+name = "nuprl"
+version = "0.1.0"
+edition = "2021"
+authors = ["Tom Panton <tjp965@student.bham.ac.uk>"]
+
+[features]
+default = ["standard_library"]
+standard_library = []
+
+[dependencies]
+clap = { version = "4.0.27", features = ["derive", "cargo"] }
+pest = "2.4.0"
+pest_derive = "2.4.0"
+rkyv = "0.7.41"
+serde = { version = "1.0.147", features = ["derive", "rc"] }
+serde_json = "1.0.87"
+walkdir = "2.3.2"

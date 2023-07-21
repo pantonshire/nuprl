@@ -1,0 +1,629 @@
+root_expr = {
+    SOI ~ vhsep? ~ expr ~ vhsep? ~ EOI
+}
+
+root_statements = {
+    SOI ~ vhsep? ~ statements ~ vhsep? ~ EOI
+}
+
+statements = {
+    (vhsep? ~ statement)*
+}
+
+statement = {
+    statement_import
+    | statement_def
+    | statement_theorem
+    | statement_exprkind
+    | statement_inf_def
+    | statement_intrinsic
+}
+
+statement_import = {
+    "import" ~ vhsep ~
+    ident_path ~ terminator
+}
+
+statement_def = {
+    "def" ~ vhsep ~
+    ident ~
+    def_params ~ vhsep? ~
+    "=" ~ vhsep? ~
+    expr ~ terminator
+}
+
+def_params = {
+    (vhsep ~ def_param)*
+}
+
+def_param = {
+    ident ~
+    (vhsep? ~ second_order_param_bindings)?
+}
+
+second_order_param_bindings = {
+    "[" ~ vhsep? ~
+    ident? ~ vhsep? ~
+    (
+        ";" ~ vhsep? ~
+        ident ~ vhsep?
+    )* ~
+    ";"? ~ vhsep? ~
+    "]"
+}
+
+statement_theorem = {
+    "theorem" ~ vhsep ~
+    ident ~ vhsep? ~
+    ":" ~ vhsep? ~
+    expr ~ vhsep? ~
+    "{" ~ vhsep? ~
+    proof_trees ~ vhsep? ~
+    "}" ~ terminator
+}
+
+proof_trees = {
+    (
+        proof_node ~
+        (
+            terminator ~
+            vhsep? ~
+            proof_node
+        )*
+    )?
+}
+
+proof_node = {
+    proof_hole | proof_tree
+}
+
+proof_tree = {
+    inference_rule ~
+    (
+        vhsep? ~
+        "{" ~ vhsep? ~
+        proof_trees ~ vhsep? ~
+        "}"
+    )?
+}
+
+proof_hole = {
+    "_"
+}
+
+inference_rule = {
+    ident_path ~ (
+        hsep ~
+        expr ~ (
+            vhsep? ~
+            "," ~ vhsep? ~
+            expr
+        )*
+    )?
+}
+
+statement_exprkind = {
+    "exprkind" ~ vhsep ~
+    ident ~
+    exprkind_args ~ vhsep? ~
+    "{" ~ vhsep? ~
+    beta_reductions ~ vhsep? ~
+    "}" ~ terminator
+}
+
+exprkind_args = {
+    (vhsep ~ exprkind_arg)*
+}
+
+exprkind_arg = {
+    exprkind_arg_principal | ident
+}
+
+exprkind_arg_principal = {
+    "[" ~ vhsep? ~
+    ident ~ vhsep? ~
+    "]"
+}
+
+beta_reductions = {
+    (
+        beta_reduction ~
+        (
+            vhsep? ~
+            beta_reduction
+        )*
+    )?
+}
+
+beta_reduction = {
+    expr ~ vhsep? ~
+    "=>" ~ vhsep? ~
+    expr ~ terminator
+}
+
+statement_inf_def = {
+    "inference" ~ vhsep ~
+    ident ~
+    inf_def_params ~ vhsep? ~
+    "{" ~ vhsep? ~
+    inf_def_substatements ~ vhsep? ~
+    "}" ~ terminator
+}
+
+inf_def_params = {
+    (
+        vhsep ~ inf_def_param ~ (
+            vhsep? ~
+            "," ~ vhsep? ~
+            inf_def_param
+        )*
+    )?
+}
+
+inf_def_param = {
+    var_name_unif_var | expr
+}
+
+var_name_unif_var = {
+    "$" ~ ident ~ ":v"
+}
+
+inf_def_substatements = {
+    (
+        inf_def_substatement ~
+        (
+            vhsep? ~
+            inf_def_substatement
+        )*
+    )?
+}
+
+inf_def_substatement = {
+    inf_def_goal | inf_def_subgoal | inf_def_extract
+}
+
+inf_def_goal = {
+    "goal" ~ vhsep? ~
+    "{" ~ vhsep? ~
+    inf_def_goal_substatements ~ vhsep? ~
+    "}" ~ terminator
+}
+
+inf_def_subgoal = {
+    "subgoal" ~ vhsep? ~
+    "{" ~ vhsep? ~
+    inf_def_goal_substatements ~ vhsep? ~
+    "}" ~ terminator
+}
+
+inf_def_extract = {
+    "extract" ~ vhsep ~
+    expr ~ terminator
+}
+
+inf_def_goal_substatements = {
+    (
+        inf_def_goal_substatement ~
+        (
+            vhsep? ~
+            inf_def_goal_substatement
+        )*
+    )?
+}
+
+inf_def_goal_substatement = {
+    inf_def_extract | inf_def_hypothesis | inf_def_conclusion
+}
+
+inf_def_hypothesis = {
+    "hypothesis" ~ vhsep ~
+    (inf_def_hypothesis_insert | inf_def_hypothesis_remove | inf_def_hypothesis_len) ~
+    terminator
+}
+
+inf_def_hypothesis_insert = {
+    unif_var ~ vhsep? ~
+    ":" ~ vhsep? ~
+    expr ~ vhsep? ~
+    "@" ~ vhsep? ~
+    expr
+}
+
+inf_def_hypothesis_remove = {
+    "remove" ~ vhsep? ~
+    "@" ~ vhsep? ~
+    expr
+}
+
+inf_def_hypothesis_len = {
+    "end" ~ vhsep ~
+    unif_var
+}
+
+inf_def_conclusion = {
+    "conclusion" ~ vhsep ~
+    expr ~ terminator
+}
+
+statement_intrinsic = {
+    "!intrinsic" ~ vhsep ~
+    ident ~ terminator
+}
+
+expr = {
+    expr_isect_type
+}
+
+expr_isect_type = {
+    isect_type | expr_eq_type
+}
+
+isect_type = {
+    ident ~ hsep? ~
+    ":" ~ vhsep? ~
+    expr_eq_type ~ vhsep? ~
+    "&" ~ vhsep? ~
+    expr_isect_type
+}
+
+expr_eq_type = {
+    expr_func_type ~ (
+        hsep? ~
+        "=" ~ vhsep? ~
+        expr_func_type ~ vhsep ~
+        "in" ~ vhsep ~
+        expr_eq_type
+    )?
+}
+
+expr_func_type = {
+    dep_func_type | indep_func_type
+}
+
+dep_func_type = {
+    ident ~ hsep? ~
+    ":" ~ vhsep? ~
+    expr_sum_type ~ vhsep? ~
+    "->" ~ vhsep? ~
+    expr_func_type
+}
+
+indep_func_type = {
+    expr_sum_type ~ (
+        hsep? ~
+        "->" ~ vhsep? ~
+        expr_func_type
+    )?
+}
+
+expr_sum_type = {
+    expr_prod_type ~ (
+        hsep? ~
+        "|" ~ vhsep? ~
+        expr_sum_type
+    )?
+}
+
+expr_prod_type = {
+    dep_prod_type | indep_prod_type
+}
+
+dep_prod_type = {
+    ident ~ hsep? ~
+    ":" ~ vhsep? ~
+    expr_lt_type ~ vhsep? ~
+    "#" ~ vhsep? ~
+    expr_prod_type
+}
+
+indep_prod_type = {
+    expr_lt_type ~ (
+        hsep? ~
+        "#" ~ vhsep? ~
+        expr_prod_type
+    )?
+}
+
+expr_lt_type = {
+    expr_add ~ (
+        hsep? ~
+        "<" ~ vhsep? ~
+        expr_add
+    )?
+}
+
+expr_add = {
+    expr_mul ~ (
+        hsep? ~
+        add_op ~ vhsep? ~
+        expr_mul
+    )*
+}
+
+expr_mul = {
+    expr_neg ~ (
+        hsep? ~
+        ((mul_op ~ vhsep?) | (div_op ~ vhsep)) ~
+        expr_neg
+    )*
+}
+
+expr_neg = {
+    negation | expr_app
+}
+
+expr_app = {
+    expr_subst ~
+    (hsep? ~ expr_subst)*
+}
+
+expr_subst = {
+    (subst_args ~ vhsep?)? ~
+    expr_base
+}
+
+subst_args = {
+    "[" ~ vhsep? ~
+    (
+        expr ~ vhsep? ~
+        "," ~ vhsep?
+    )* ~
+    expr? ~ vhsep? ~
+    "]"
+}
+
+expr_base = {
+    "(" ~ vhsep? ~ expr ~ vhsep? ~ ")"
+    | dep
+    | unif_var
+    | tag
+    | spread
+    | decide
+    | compare
+    | call_by_value
+    | abstraction
+    | pair
+    | second_order_var
+    | ident_path
+    | nat
+    | token
+}
+
+add_op = {
+    "+" | "-"
+}
+
+mul_op = {
+    "*"
+}
+
+div_op = {
+    "div" | "rem"
+}
+
+negation = {
+    "-" ~ vhsep? ~ expr_neg
+}
+
+abstraction = {
+    "\\" ~ hsep? ~
+    ident ~ hsep? ~
+    "." ~ vhsep? ~
+    expr
+}
+
+spread = {
+    "let" ~ vhsep ~
+    spread_binding ~ vhsep? ~
+    "=" ~ vhsep? ~
+    expr ~ vhsep ~
+    "in" ~ vhsep ~
+    expr
+}
+
+spread_binding = {
+    "<" ~ vhsep? ~
+    ident ~ vhsep? ~
+    "," ~ vhsep? ~
+    ident ~ vhsep? ~
+    ">"
+}
+
+call_by_value = {
+    "let" ~ vhsep ~
+    ident ~ vhsep? ~
+    ":=" ~ vhsep? ~
+    expr ~ vhsep ~
+    "in" ~ vhsep ~
+    expr
+}
+
+decide = {
+    "case" ~ vhsep ~
+    expr ~ vhsep ~
+    "of" ~ vhsep ~
+    "inl" ~ vhsep? ~
+    "(" ~ vhsep? ~
+    ident ~ vhsep? ~
+    ")" ~ vhsep? ~
+    "=>" ~ vhsep? ~
+    expr ~ vhsep? ~
+    "," ~ vhsep? ~
+    "inr" ~ vhsep? ~
+    "(" ~ vhsep? ~
+    ident ~ vhsep? ~
+    ")" ~ vhsep? ~
+    "=>" ~ vhsep? ~
+    expr
+}
+
+compare = {
+    "if" ~ vhsep ~
+    expr_add ~ vhsep? ~
+    compare_op ~ vhsep? ~
+    expr_add ~ vhsep ~
+    "then" ~ vhsep ~
+    expr ~ vhsep ~
+    "else" ~ vhsep ~
+    expr
+}
+
+compare_op = {
+    "=" | "<"
+}
+
+pair = {
+    "<" ~ vhsep? ~
+    expr ~ vhsep? ~
+    "," ~ vhsep? ~
+    expr ~ vhsep? ~
+    ">"
+}
+
+second_order_var = {
+    ident_path ~ hsep? ~
+    second_order_var_bindings
+}
+
+second_order_var_bindings = {
+    "[" ~ vhsep? ~
+    ident_path? ~ vhsep? ~
+    (
+        ";" ~ vhsep? ~
+        ident_path ~ vhsep?
+    )* ~
+    ";"? ~ vhsep? ~
+    "]"
+}
+
+dep = {
+    ident ~ hsep? ~
+    "." ~ vhsep? ~
+    expr
+}
+
+unif_var = {
+    "$" ~ ident ~ (":" ~ unif_var_type)?
+}
+
+unif_var_type = {
+    "n"
+}
+
+tag = {
+    "[[" ~ vhsep? ~
+    (nat | reduce_all) ~ vhsep? ~
+    ";" ~ vhsep? ~
+    expr ~ vhsep? ~
+    "]]"
+}
+
+reduce_all = {
+    "*"
+}
+
+// A token which is reserved and cannot be used as an identifier if it is equal to one of the
+// values listed below followed by any non-ident character.
+reserved = {
+    (
+        "div" | "rem"
+        | "case" | "of"
+        | "let" | "in"
+        | "if" | "then" | "else"
+    ) ~ !ident_tail
+}
+
+ident_path = {
+    absolute_ident_path | relative_ident_path
+}
+
+absolute_ident_path = {
+    "/" ~ relative_ident_path?
+}
+
+relative_ident_path = {
+    ident_path_node ~
+    ("/" ~ ident_path_node)*  ~
+    !"/"
+}
+
+ident_path_node = {
+    ident_path_node_super
+    | ident_path_node_module
+    | ident
+}
+
+ident_path_node_super = {
+    ".."
+}
+
+ident_path_node_module = {
+    "."
+}
+
+ident = @{
+    !reserved ~
+    "_"* ~
+    !('0'..'9') ~
+    primary_ident_char ~
+    ident_tail*
+}
+
+ident_tail = {
+    primary_ident_char | "_" | "'"
+}
+
+primary_ident_char = {
+    LETTER | NUMBER | "%"
+}
+
+nat = {
+    ('0'..'9')+
+}
+
+token = {
+    "\"" ~ token_body ~ "\""
+}
+
+token_body = {
+    (escaped_token_char | token_char)*
+}
+
+escaped_token_char = {
+    "\\" ~ escaped_token_char_inner
+}
+
+escaped_token_char_inner = {
+    ANY
+}
+
+token_char = {
+    !("\"" | "\\") ~ ANY
+}
+
+comment = _{
+    "//" ~ (!NEWLINE ~ ANY)*
+}
+
+terminator = _{
+    (comment | hws)* ~ (";" | NEWLINE | EOI)
+}
+
+// A vertical or horizontal separator. Should only be used where more tokens are always expected
+// after the separator, since a newline can also be used to 
+vhsep = _{
+    (comment | hws | NEWLINE)+ | EOI
+}
+
+// A horizontal separator.
+hsep = _{
+    // FIXME: some kind of continuation character which allows the following newline to be a hsep,
+    // like backslash in Python or Bash. A backslash wouldn't be a good choice because it is
+    // already used for lambdas; maybe an ellipsis `...`?
+    hws+
+}
+
+// A single horizontal whitespace character.
+hws = _{
+    " " | "\t"
+}
